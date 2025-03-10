@@ -3,6 +3,9 @@ flask-cors
 faiss-cpu
 langchain-community
 langchain-huggingface
+langchain-google-genai
 sentence-transformers
 langchain_mistralai
+pillow
+google-generativeai
 
