@@ -6,7 +6,7 @@ const DiffiScore = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const [isInitialized, setIsInitialized] = (false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadTag, setUploadTag] = useState('');

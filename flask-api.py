@@ -51,7 +51,7 @@ def search():
             except FileNotFoundError:
                 return jsonify({"error": "Vector database not initialized. Call /api/initialize first"}), 400
         
-        # Use DeepSeek-enhanced search
+        # Use Gemini-enhanced search
         results = retrieve_similar_images(query_text, vector_db, top_k)
         return jsonify({"query": query_text, "results": results})
     except Exception as e:

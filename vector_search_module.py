@@ -1,8 +1,7 @@
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
-from langchain.llms import DeepSeek
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
+from langchain_google_genai import GoogleGenerativeAI
+import google.generativeai as genai
 import uuid
 import os
 from PIL import Image
@@ -11,19 +10,17 @@ from io import BytesIO
 
 # Initialize embeddings model
 embeddings = HuggingFaceEmbeddings(model_name="thenlper/gte-large")
-llm = DeepSeek(api_key="your_deepseek_api_key")  # Replace with actual key
 
-# LangChain prompt template for better query interpretation
-prompt = PromptTemplate(
-    input_variables=["query"],
-    template="""
-    You are an expert in educational image retrieval. Rewrite the user's query
-    in a way that best represents the underlying concept and meaning. Query: {query}
-    """
-)
-llm_chain = LLMChain(llm=llm, prompt=prompt)
+# Configure Gemini API
+genai.configure(api_key="AIzaSyBbSeyhlz5wHdogTYEe_sGG1k_6Vsa8KUo")  # Replace with actual key
+llm = GoogleGenerativeAI(model="gemini-2.0-flash")
 
 index_path = "faiss_index"
+
+def refine_query_with_gemini(query_text):
+    """Use Gemini LLM to rewrite the user's query for better search results"""
+    response = llm.invoke(f"Rewrite the following query for better search results: {query_text}")
+    return response
 
 def initialize_vector_db(image_folder, tags):
     """Initialize the vector database with images and tags"""
@@ -48,9 +45,8 @@ def load_vector_db():
         raise FileNotFoundError(f"FAISS index not found at '{index_path}'")
 
 def retrieve_similar_images(query_text, vector_db, top_k=2):
-    """Retrieve similar images based on query text using DeepSeek LLM"""
-    # Pass query through DeepSeek LLM for better understanding
-    reformulated_query = llm_chain.run(query=query_text)
+    """Retrieve similar images based on query text using Gemini LLM"""
+    reformulated_query = refine_query_with_gemini(query_text)
     print(f"Original Query: {query_text} | Reformulated Query: {reformulated_query}")
     
     query_vector = embeddings.embed_documents([reformulated_query])[0]
