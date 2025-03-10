@@ -3,6 +3,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import json
+import uuid
+import base64
+from PIL import Image
+from werkzeug.utils import secure_filename
 
 # Import functions from vector_search.py
 from vector_search_module import load_vector_db, initialize_vector_db, retrieve_similar_images
@@ -12,6 +16,9 @@ CORS(app)  # Enable CORS for all routes
 
 # Global variable for vector database
 vector_db = None
+
+# Path to save/load the FAISS index (should match the one in vector_search_module.py)
+index_path = "faiss_index"
 
 @app.route('/api/initialize', methods=['POST'])
 def initialize_db():
@@ -28,7 +35,8 @@ def initialize_db():
         
         # Check if image folder exists
         if not os.path.exists(image_folder):
-            return jsonify({"error": f"Image folder not found: {image_folder}"}), 404
+            os.makedirs(image_folder)
+            print(f"Created image folder: {image_folder}")
         
         # Initialize vector database
         vector_db = initialize_vector_db(image_folder, tags)
@@ -66,6 +74,74 @@ def search():
         return jsonify({
             "query": query_text,
             "results": results
+        })
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/upload', methods=['POST'])
+def upload_image():
+    """Upload an image with a tag to the database"""
+    global vector_db
+    
+    try:
+        # Check if database is initialized
+        if vector_db is None:
+            try:
+                vector_db = load_vector_db()
+            except FileNotFoundError:
+                return jsonify({
+                    "error": "Vector database not initialized. Call /api/initialize first"
+                }), 400
+        
+        # Check if image and tag are provided
+        if 'image' not in request.files:
+            return jsonify({"error": "No image file provided"}), 400
+        
+        image_file = request.files['image']
+        tag = request.form.get('tag')
+        
+        if not tag:
+            return jsonify({"error": "No tag provided"}), 400
+        
+        if image_file.filename == '':
+            return jsonify({"error": "No selected file"}), 400
+        
+        # Create images directory if it doesn't exist
+        image_folder = "./images"
+        if not os.path.exists(image_folder):
+            os.makedirs(image_folder)
+        
+        # Generate a unique filename
+        filename = f"q{str(uuid.uuid4())[:8]}"
+        file_extension = os.path.splitext(image_file.filename)[1].lower()
+        if file_extension not in ['.png', '.jpg', '.jpeg']:
+            return jsonify({"error": "Only PNG and JPG files are allowed"}), 400
+        
+        # Save image to disk
+        image_path = os.path.join(image_folder, f"{filename}.png")
+        
+        # Convert to PNG if needed
+        img = Image.open(image_file)
+        img.save(image_path, format="PNG")
+        
+        # Add to vector database
+        vector_db.add_texts(
+            texts=[tag],
+            metadatas=[{"tag": tag, "image_path": image_path}],
+            ids=[str(uuid.uuid4())]
+        )
+        
+        # Save the updated vector database
+        vector_db.save_local(index_path)
+        
+        # Return success response with image details
+        return jsonify({
+            "status": "success",
+            "message": "Image uploaded successfully",
+            "filename": filename,
+            "tag": tag,
+            "image_path": image_path
         })
     
     except Exception as e:
