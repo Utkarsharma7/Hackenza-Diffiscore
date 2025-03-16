@@ -1,90 +1,107 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import HomePage from './HomePage';
+import SearchResults from './SearchResults';
+import UploadPage from './UploadPage';
 import './DiffiScore.css';
 
-const DiffiScore = () => {
-  const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+function App() {
+  // State variables shared across components
   const [isInitialized, setIsInitialized] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadTag, setUploadTag] = useState('');
-
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // API base URL (adjust as needed)
   const API_BASE_URL = 'http://localhost:5000/api';
 
+  // Check database status on component mount
   useEffect(() => {
     checkDatabaseStatus();
   }, []);
 
+  // Check if database is initialized
   const checkDatabaseStatus = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/status`);
       const data = await response.json();
       setIsInitialized(data.status === 'ready');
     } catch (error) {
+      console.error('Error checking database status:', error);
       setErrorMessage('Could not connect to the server');
     }
   };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!isInitialized) {
-      setErrorMessage('Please initialize the database first');
-      return;
-    }
+  // Initialize database
+  const initializeDatabase = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/search`, {
+      const response = await fetch(`${API_BASE_URL}/initialize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, top_k: 3 })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_folder: './images',
+          tags: {
+            "q1": "sick",
+            "q2": "painted",
+            "q3": "divisible",
+            "q4": "sum",
+            "q5": "election"
+          }
+        })
       });
       const data = await response.json();
+      
       if (response.ok) {
-        setSearchResults(data.results);
+        setIsInitialized(true);
+        setSuccessMessage('Database initialized successfully');
+        setTimeout(() => setSuccessMessage(''), 3000);
       } else {
-        throw new Error(data.error || 'Search failed');
+        throw new Error(data.error || 'Initialization failed');
       }
     } catch (error) {
-      setErrorMessage('Failed to perform search');
+      console.error('Initialization error:', error);
+      setErrorMessage('Failed to initialize database');
+      setTimeout(() => setErrorMessage(''), 5000);
     }
   };
 
   return (
-    <div className="container">
-      <header className="header">
-        <h1>DiffiScore</h1>
-        <p>LLM-enhanced Exam Question Management</p>
-      </header>
-      <div className="main-content">
-        <div className="panel">
-          <h2>Search Questions</h2>
-          <form onSubmit={handleSearch}>
-            <input 
-              type="text" 
-              placeholder="Enter a text prompt..." 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="text-input"
+    <Router>
+      <div className="app-container">
+        <Routes>
+          <Route path="/" element={
+            <HomePage 
+              isInitialized={isInitialized}
+              initializeDatabase={initializeDatabase}
+              errorMessage={errorMessage}
+              setErrorMessage={setErrorMessage}
+              API_BASE_URL={API_BASE_URL}
             />
-            <button type="submit" className="button primary-button">Search</button>
-          </form>
-          <p className="hint-text">Using DeepSeek API for better query interpretation.</p>
-        </div>
-        <div className="panel">
-          <h2>Results</h2>
-          <div className="results-grid">
-            {searchResults.map((result, index) => (
-              <div key={index} className="result-card">
-                <img src={`data:image/png;base64,${result.image_data}`} alt={result.tag} className="result-image"/>
-                <p>{result.tag}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+          } />
+          <Route path="/upload" element={
+            <UploadPage 
+              isInitialized={isInitialized}
+              initializeDatabase={initializeDatabase}
+              errorMessage={errorMessage}
+              setErrorMessage={setErrorMessage}
+              successMessage={successMessage}
+              setSuccessMessage={setSuccessMessage}
+              API_BASE_URL={API_BASE_URL}
+            />
+          } />
+          <Route path="/results" element={
+            <SearchResults 
+              isInitialized={isInitialized}
+              errorMessage={errorMessage}
+              setErrorMessage={setErrorMessage}
+              API_BASE_URL={API_BASE_URL}
+            />
+          } />
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
-};
+}
 
-export default DiffiScore;
+export default App;
