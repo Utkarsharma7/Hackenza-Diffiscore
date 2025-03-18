@@ -1,30 +1,33 @@
-# app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
+<<<<<<< HEAD
 import json
 import uuid
 import base64
 from PIL import Image
 from werkzeug.utils import secure_filename
+=======
+import base64
+from PIL import Image
+from io import BytesIO
+>>>>>>> AI
 
-# Import functions from vector_search.py
+# Import functions from vector_search_module.py
 from vector_search_module import load_vector_db, initialize_vector_db, retrieve_similar_images
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-# Global variable for vector database
 vector_db = None
+index_path = "faiss_index"
 
 # Path to save/load the FAISS index (should match the one in vector_search_module.py)
 index_path = "faiss_index"
 
 @app.route('/api/initialize', methods=['POST'])
 def initialize_db():
-    """Initialize the vector database with provided configuration"""
     global vector_db
-    
     try:
         data = request.json
         image_folder = data.get('image_folder')
@@ -33,49 +36,35 @@ def initialize_db():
         if not image_folder or not tags:
             return jsonify({"error": "Missing required parameters: image_folder or tags"}), 400
         
-        # Check if image folder exists
         if not os.path.exists(image_folder):
             os.makedirs(image_folder)
             print(f"Created image folder: {image_folder}")
         
-        # Initialize vector database
         vector_db = initialize_vector_db(image_folder, tags)
-        
         return jsonify({"status": "success", "message": "Vector database initialized successfully"})
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/search', methods=['POST'])
 def search():
-    """Search for similar images based on query text"""
     global vector_db
-    
     try:
         data = request.json
         query_text = data.get('query')
-        top_k = data.get('top_k', 2)  # Default to 2 results
+        top_k = data.get('top_k', 2)
         
         if not query_text:
             return jsonify({"error": "Missing required parameter: query"}), 400
         
-        # Load vector database if not already loaded
         if vector_db is None:
             try:
                 vector_db = load_vector_db()
             except FileNotFoundError:
-                return jsonify({
-                    "error": "Vector database not initialized. Call /api/initialize first"
-                }), 400
+                return jsonify({"error": "Vector database not initialized. Call /api/initialize first"}), 400
         
-        # Perform search
+        # Use Gemini-enhanced search
         results = retrieve_similar_images(query_text, vector_db, top_k)
-        
-        return jsonify({
-            "query": query_text,
-            "results": results
-        })
-    
+        return jsonify({"query": query_text, "results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -149,16 +138,10 @@ def upload_image():
 
 @app.route('/api/status', methods=['GET'])
 def status():
-    """Check if the vector database is loaded"""
     global vector_db
-    
-    return jsonify({
-        "status": "ready" if vector_db is not None else "not_initialized",
-        "message": "Vector database is loaded and ready" if vector_db is not None else "Vector database not initialized"
-    })
+    return jsonify({"status": "ready" if vector_db is not None else "not_initialized"})
 
 if __name__ == '__main__':
-    # Try to load the vector database on startup
     try:
         vector_db = load_vector_db()
         print("Vector database loaded successfully on startup")
@@ -166,5 +149,9 @@ if __name__ == '__main__':
         print(f"Warning: Could not load vector database: {e}")
         print("You'll need to initialize the database through the API")
     
+<<<<<<< HEAD
     # Run the Flask app
     app.run(debug=True, host='0.0.0.0', port=5000)
+=======
+    app.run(debug=True, host='0.0.0.0', port=5000)
+>>>>>>> AI

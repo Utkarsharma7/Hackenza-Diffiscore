@@ -1,6 +1,7 @@
-# vector_search.py
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_huggingface.embeddings import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAI
+import google.generativeai as genai
 import uuid
 import os
 from PIL import Image
@@ -10,16 +11,22 @@ from io import BytesIO
 # Initialize embeddings model
 embeddings = HuggingFaceEmbeddings(model_name="thenlper/gte-large")
 
-# Path to save/load the FAISS index
+# Configure Gemini API
+genai.configure(api_key="AIzaSyBbSeyhlz5wHdogTYEe_sGG1k_6Vsa8KUo")  # Replace with actual key
+llm = GoogleGenerativeAI(model="gemini-2.0-flash")
+
 index_path = "faiss_index"
+
+def refine_query_with_gemini(query_text):
+    """Use Gemini LLM to rewrite the user's query for better search results"""
+    response = llm.invoke(f"Rewrite the following query for better search results: {query_text}")
+    return response
 
 def initialize_vector_db(image_folder, tags):
     """Initialize the vector database with images and tags"""
-    # Create vector database
     texts = list(tags.values())
     vector_db = FAISS.from_texts(texts=[texts[0]], embedding=embeddings)
     
-    # Add all tags and images to the vector database
     for img_name, tag in tags.items():
         image_path = os.path.join(image_folder, f"{img_name}.png")
         vector_db.add_texts(
@@ -28,21 +35,21 @@ def initialize_vector_db(image_folder, tags):
             ids=[str(uuid.uuid4())]
         )
     
-    # Save the vector database
     vector_db.save_local(index_path)
-    
     return vector_db
 
 def load_vector_db():
-    """Load the vector database from disk"""
     if os.path.exists(index_path):
         return FAISS.load_local(index_path, embeddings=embeddings, allow_dangerous_deserialization=True)
     else:
         raise FileNotFoundError(f"FAISS index not found at '{index_path}'")
 
 def retrieve_similar_images(query_text, vector_db, top_k=2):
-    """Retrieve similar images based on query text"""
-    query_vector = embeddings.embed_documents([query_text])[0]
+    """Retrieve similar images based on query text using Gemini LLM"""
+    reformulated_query = refine_query_with_gemini(query_text)
+    print(f"Original Query: {query_text} | Reformulated Query: {reformulated_query}")
+    
+    query_vector = embeddings.embed_documents([reformulated_query])[0]
     results = vector_db.similarity_search_by_vector(query_vector, k=top_k)
     
     retrieved_data = []
@@ -51,7 +58,6 @@ def retrieve_similar_images(query_text, vector_db, top_k=2):
         image_path = metadata.get('image_path', 'N/A')
         tag = metadata.get('tag', 'N/A')
         
-        # Add image data as base64 if file exists
         image_data = None
         try:
             if os.path.exists(image_path):
@@ -69,28 +75,3 @@ def retrieve_similar_images(query_text, vector_db, top_k=2):
         })
     
     return retrieved_data
-
-# Example usage (can be removed when making an API)
-if __name__ == "__main__":
-    # Example data - replace with your actual data
-    image_folder = "./images"  # Update with your path
-    tags = {
-        "q1": "sick",
-        "q2": "painted",
-        "q3": "divisible",
-        "q4": "sum",
-        "q5": "election",
-    }
-    
-    # Check if index exists, otherwise initialize
-    if not os.path.exists(index_path):
-        vector_db = initialize_vector_db(image_folder, tags)
-        print("Vector database initialized and saved.")
-    else:
-        vector_db = load_vector_db()
-        print("Vector database loaded from disk.")
-    
-    # Test search
-    query = "numeric"
-    results = retrieve_similar_images(query, vector_db)
-    print(f"Found {len(results)} results for query '{query}'")

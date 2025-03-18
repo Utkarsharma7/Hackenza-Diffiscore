@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import HomePage from './HomePage';
+import SearchResults from './SearchResults';
+import UploadPage from './UploadPage';
 import './DiffiScore.css';
 
+<<<<<<< HEAD
 const DiffiScore = () => {
   // State variables
   const [query, setQuery] = useState('');
@@ -14,6 +19,14 @@ const DiffiScore = () => {
   const [expandedImage, setExpandedImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
+=======
+function App() {
+  // State variables shared across components
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  
+>>>>>>> AI
   // API base URL (adjust as needed)
   const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -69,6 +82,7 @@ const DiffiScore = () => {
     }
   };
 
+<<<<<<< HEAD
   // Handle search submission
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -395,18 +409,44 @@ const DiffiScore = () => {
               src={`data:image/png;base64,${expandedImage}`} 
               alt="Full size" 
               className="full-image"
+=======
+  return (
+    <Router>
+      <div className="app-container">
+        <Routes>
+          <Route path="/" element={
+            <HomePage 
+              isInitialized={isInitialized}
+              initializeDatabase={initializeDatabase}
+              errorMessage={errorMessage}
+              setErrorMessage={setErrorMessage}
+              API_BASE_URL={API_BASE_URL}
+>>>>>>> AI
             />
-            <button 
-              className="button download-button modal-download"
-              onClick={() => handleDownload(expandedImage, 'question-image.png')}
-            >
-              Download Image
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+          } />
+          <Route path="/upload" element={
+            <UploadPage 
+              isInitialized={isInitialized}
+              initializeDatabase={initializeDatabase}
+              errorMessage={errorMessage}
+              setErrorMessage={setErrorMessage}
+              successMessage={successMessage}
+              setSuccessMessage={setSuccessMessage}
+              API_BASE_URL={API_BASE_URL}
+            />
+          } />
+          <Route path="/results" element={
+            <SearchResults 
+              isInitialized={isInitialized}
+              errorMessage={errorMessage}
+              setErrorMessage={setErrorMessage}
+              API_BASE_URL={API_BASE_URL}
+            />
+          } />
+        </Routes>
+      </div>
+    </Router>
   );
-};
+}
 
-export default DiffiScore;
+export default App;
